@@ -2,10 +2,7 @@ import SwiftUI
 
 struct CookRecipesSearchView: View {
     @State private var searchQuery: String = ""
-    
-    @State private var suggestedRecipes: [Recipe]? = nil
-    @State private var isFetchingSuggestedRecipes: Bool = true
-    
+    @Query(.randomRecipes(count: 10), keyPath: \.recipes) private var suggestedRecipes
     @Environment(\.networkClient) private var networkClient
     
     private struct QuerySuggestion: Identifiable {
@@ -23,6 +20,37 @@ struct CookRecipesSearchView: View {
         .init(id: "caesar-salad", title: "Caesar salad", emojiIcon: "🥗"),
     ]
     
+    @ViewBuilder
+    private func loadingSuggestionsView() -> some View {
+        VStack {
+            ProgressView()
+                .progressViewStyle(.circular)
+                .controlSize(.extraLarge)
+            Text("Loading suggestions...")
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    @ViewBuilder
+    private func suggestedRecipesList(for recipes: [Recipe]) -> some View {
+        Group {
+            Text("Or try something new today")
+                .font(.system(size: 16, weight: .semibold))
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+            
+            List {
+                ForEach(recipes.enumerated(), id: \.element.id) { offset, recipe in
+                    CookRecipeListItemView(recipe: recipe)
+                        .listRowSeparator(offset == 0 ? .hidden : .automatic, edges: .top)
+                        .listRowSeparator(offset == recipes.count - 1 ? .hidden : .automatic, edges: .bottom)
+                }
+            }
+            .listStyle(.inset)
+        }
+    }
+    
     var body: some View {
         NavigationSplitView {
             VStack(alignment: .leading) {
@@ -38,29 +66,10 @@ struct CookRecipesSearchView: View {
                 .padding(.horizontal)
                 .frame(maxWidth: .infinity)
                 
-                if isFetchingSuggestedRecipes {
-                    VStack {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .controlSize(.extraLarge)
-                        Text("Loading suggestions...")
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let suggestedRecipes {
-                    Text("Or try something new today")
-                        .font(.system(size: 16, weight: .semibold))
-                        .padding(.horizontal, 24)
-                        .padding(.top, 20)
-                    
-                    List {
-                        ForEach(suggestedRecipes.enumerated(), id: \.element.id) { offset, recipe in
-                            CookRecipeListItemView(recipe: recipe)
-                                .listRowSeparator(offset == 0 ? .hidden : .automatic, edges: .top)
-                                .listRowSeparator(offset == suggestedRecipes.count - 1 ? .hidden : .automatic, edges: .bottom)
-                        }
-                    }
-                    .listStyle(.inset)
+                if let suggestedRecipes {
+                    suggestedRecipesList(for: suggestedRecipes)
+                } else if $suggestedRecipes.isFetching {
+                    loadingSuggestionsView()
                 } else {
                     Spacer()
                 }
@@ -70,19 +79,6 @@ struct CookRecipesSearchView: View {
             .navigationTitle("Cook")
         } detail: {
             EmptyView()
-        }
-        .onAppear {
-            Task {
-                do {
-                    isFetchingSuggestedRecipes = true
-                    let response = try await networkClient.request(.randomRecipes(count: 10))
-                    print("Fetched \(response.recipes.count) suggested recipes")
-                    suggestedRecipes = response.recipes
-                } catch {
-                    print("Failed to fetch suggested recipes: \(error)")
-                }
-                isFetchingSuggestedRecipes = false
-            }
         }
     }
 }
