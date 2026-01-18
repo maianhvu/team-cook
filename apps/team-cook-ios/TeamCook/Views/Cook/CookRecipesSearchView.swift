@@ -3,13 +3,18 @@ import SwiftUI
 struct CookRecipesSearchView: View {
     @State private var searchQuery: String = ""
     
-    private struct RecipeSuggestion: Identifiable {
+    @State private var suggestedRecipes: [Recipe]? = nil
+    @State private var isFetchingSuggestedRecipes: Bool = true
+    
+    @Environment(\.networkClient) private var networkClient
+    
+    private struct QuerySuggestion: Identifiable {
         let id: String
         let title: LocalizedStringResource
         let emojiIcon: Character
     }
     
-    private let suggestions: [RecipeSuggestion] = [
+    private let querySuggestions: [QuerySuggestion] = [
         .init(id: "chicken-parmesan", title: "Chicken parmesan", emojiIcon: "🍗"),
         .init(id: "lettuce", title: "Lettuce", emojiIcon: "🥬"),
         .init(id: "onion", title: "Onion", emojiIcon: "🧅"),
@@ -22,7 +27,7 @@ struct CookRecipesSearchView: View {
         NavigationSplitView {
             VStack(alignment: .leading) {
                 FlowLayout {
-                    ForEach(suggestions) { suggestion in
+                    ForEach(querySuggestions) { suggestion in
                         SearchSuggestionView(suggestion: suggestion.title, emojiIcon: suggestion.emojiIcon) {
                             var phraseResource: LocalizedStringResource = "\(suggestion.title), "
                             phraseResource.locale = .current
@@ -32,7 +37,33 @@ struct CookRecipesSearchView: View {
                 }
                 .padding(.horizontal)
                 .frame(maxWidth: .infinity)
-                Spacer()
+                
+                if isFetchingSuggestedRecipes {
+                    VStack {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .controlSize(.extraLarge)
+                        Text("Loading suggestions...")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let suggestedRecipes {
+                    Text("Or try something new today")
+                        .font(.system(size: 16, weight: .semibold))
+                        .padding(.horizontal, 24)
+                        .padding(.top, 20)
+                    
+                    List {
+                        ForEach(suggestedRecipes.enumerated(), id: \.element.id) { offset, recipe in
+                            CookRecipeListItemView(recipe: recipe)
+                                .listRowSeparator(offset == 0 ? .hidden : .automatic, edges: .top)
+                                .listRowSeparator(offset == suggestedRecipes.count - 1 ? .hidden : .automatic, edges: .bottom)
+                        }
+                    }
+                    .listStyle(.inset)
+                } else {
+                    Spacer()
+                }
             }
             .frame(maxWidth: .infinity)
             .searchable(text: $searchQuery, prompt: "Search recipes or ingredients")
@@ -40,7 +71,19 @@ struct CookRecipesSearchView: View {
         } detail: {
             EmptyView()
         }
-
+        .onAppear {
+            Task {
+                do {
+                    isFetchingSuggestedRecipes = true
+                    let response = try await networkClient.request(.randomRecipes(count: 10))
+                    print("Fetched \(response.recipes.count) suggested recipes")
+                    suggestedRecipes = response.recipes
+                } catch {
+                    print("Failed to fetch suggested recipes: \(error)")
+                }
+                isFetchingSuggestedRecipes = false
+            }
+        }
     }
 }
 
