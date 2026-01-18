@@ -1,0 +1,11 @@
+{
+  "name": "@team-cook/monorepo",
+  "private": true,
+  "workspaces": [
+    "servers/*"
+  ],
+  "devDependencies": {
+    "prettier": "^3.8.0",
+    "typescript": "^5.9.3"
+  }
+}
