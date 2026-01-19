@@ -103,7 +103,7 @@ final class QueryController<Request: NetworkRequest>: ObservableObject {
     }
 }
 
-struct UpdateQueryRequestViewModifier<Request: NetworkRequest, each Dependency: Equatable>: ViewModifier {
+private struct UpdateQueryRequestViewModifier<Request: NetworkRequest, each Dependency: Equatable>: ViewModifier {
     var queryController: QueryController<Request>
     var updater: (repeat each Dependency) -> Request
     @State private var dependencies: EquatablePack<repeat each Dependency>

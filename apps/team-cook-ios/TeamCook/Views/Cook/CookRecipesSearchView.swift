@@ -80,6 +80,7 @@ struct CookRecipesSearchView: View {
         } detail: {
             EmptyView()
         }
+        .onAppear { $suggestedRecipes.refetch() }
     }
 }
 

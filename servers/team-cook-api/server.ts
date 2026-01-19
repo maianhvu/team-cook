@@ -133,6 +133,7 @@ const server = Bun.serve({
       },
     }),
     '/api/1/recipes/:id/information': proxySpoonacularRequest('/recipes/:id/information'),
+    '/api/1/recipes/by-ingredients': proxySpoonacularRequest('/recipes/findByIngredients'),
   },
   fetch(req) {
     console.log(requestMethodTag(req.method), new URL(req.url).pathname, '->', chalk.dim('404'))

@@ -14,6 +14,8 @@ struct Recipe: Identifiable, Codable {
     let isGlutenFree: Bool
     let isVeryHealthy: Bool
     
+    let extendedIngredients: [Ingredient]
+    
     private enum CodingKeys: String, CodingKey {
         case id
         case imageURL = "image"
@@ -24,6 +26,7 @@ struct Recipe: Identifiable, Codable {
         case isVegetarian = "vegetarian"
         case isGlutenFree = "glutenFree"
         case isVeryHealthy = "veryHealthy"
+        case extendedIngredients
     }
 }
 
