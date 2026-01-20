@@ -25,6 +25,13 @@ struct CookRecipeDetailView: View {
         }
     }
     
+    private func bulletImageName(for ingredientConsistency: IngredientConsistency) -> String {
+        switch ingredientConsistency {
+        case .solid: "cube"
+        case .liquid: "drop"
+        }
+    }
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -52,12 +59,12 @@ struct CookRecipeDetailView: View {
                         ForEach(recipe.extendedIngredients) { ingredient in
                             if let measure = ingredient.measures[selectedMeasureSystem] {
                                 if measure.unitShort.isEmpty {
-                                    Text("• \(rounded: measure.amount, maxSignificantFigures: 1) of \(ingredient.name)")
+                                    Text("\(Image(systemName: bulletImageName(for: ingredient.consistency))) \(rounded: measure.amount, maxSignificantFigures: 1) of \(ingredient.name)")
                                 } else {
-                                    Text("• \(rounded: measure.amount, maxSignificantFigures: 1) \(measure.unitShort) of \(ingredient.name)")
+                                    Text("\(Image(systemName: bulletImageName(for: ingredient.consistency))) \(rounded: measure.amount, maxSignificantFigures: 1) \(measure.unitShort) of \(ingredient.name)")
                                 }
                             } else {
-                                Text("• \(ingredient.name)")
+                                Text("\(Image(systemName: bulletImageName(for: ingredient.consistency))) \(ingredient.name)")
                             }
                         }
                         .foregroundStyle(Color(.label).opacity(0.75))
@@ -86,7 +93,7 @@ struct CookRecipeDetailView: View {
     }
 }
 
-extension LocalizedStringResource.StringInterpolation {
+extension LocalizedStringKey.StringInterpolation {
     fileprivate mutating func appendInterpolation(rounded number: Double, maxSignificantFigures: Int) {
         if abs(number - number.rounded()) < 1e-10 {
             appendInterpolation(Int(number))

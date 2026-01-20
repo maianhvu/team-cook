@@ -8,8 +8,3 @@ struct Ingredient: Identifiable, Codable {
     var measures: IngredientMeasures
     var consistency: IngredientConsistency
 }
-
-enum IngredientConsistency: String, Codable {
-    case solid = "SOLID"
-    case liquid = "LIQUID"
-}
