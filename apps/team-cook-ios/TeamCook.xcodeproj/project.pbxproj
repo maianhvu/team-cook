@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		17575C492F1FDB6B004C9986 /* TeamCookMacros in Frameworks */ = {isa = PBXBuildFile; productRef = 17575C482F1FDB6B004C9986 /* TeamCookMacros */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		17575BC02F1BC0C1004C9986 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				17575C492F1FDB6B004C9986 /* TeamCookMacros in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = TeamCook;
 			packageProductDependencies = (
+				17575C482F1FDB6B004C9986 /* TeamCookMacros */,
 			);
 			productName = TeamCook;
 			productReference = 17575BB22F1BC0C0004C9986 /* TeamCook.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 17575BA92F1BC0C0004C9986;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				17575C472F1FDB6B004C9986 /* XCLocalSwiftPackageReference "../../packages/TeamCookMacros" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 17575BB32F1BC0C0004C9986 /* Products */;
 			projectDirPath = "";
@@ -578,6 +587,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		17575C472F1FDB6B004C9986 /* XCLocalSwiftPackageReference "../../packages/TeamCookMacros" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../packages/TeamCookMacros;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		17575C482F1FDB6B004C9986 /* TeamCookMacros */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TeamCookMacros;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 17575BAA2F1BC0C0004C9986 /* Project object */;
 }

@@ -1,7 +1,34 @@
 import { defineHandler } from '../handler/types'
-import type { Recipe } from '../models/Ingredient'
+import type { Ingredient, Recipe } from '../models/Ingredient'
 import { processNewIngredients } from '../services/ingredient-id'
 import { setCache, CACHE_DURATION_MS_DEFAULT } from '../services/cache'
+
+/**
+ * Dedupe ingredients by ID, keeping the first occurrence of each ID
+ */
+function dedupeIngredients(ingredients: Ingredient[]): Ingredient[] {
+  const seen = new Set<number>()
+  return ingredients.filter((ing) => {
+    if (seen.has(ing.id)) {
+      return false
+    }
+    seen.add(ing.id)
+    return true
+  })
+}
+
+/**
+ * Process a recipe's ingredients: assign IDs to unknown ingredients, then dedupe
+ */
+function processRecipeIngredients(recipe: Recipe): void {
+  if (!recipe.extendedIngredients) return
+
+  // First, assign IDs to ingredients with id=-1
+  processNewIngredients(recipe.extendedIngredients)
+
+  // Then dedupe by ID, keeping first occurrence
+  recipe.extendedIngredients = dedupeIngredients(recipe.extendedIngredients)
+}
 
 /**
  * Transform a single recipe response, processing new ingredients
@@ -10,11 +37,7 @@ async function transformRecipeResponse(response: Response): Promise<Response> {
   if (!response.ok) return response
 
   const recipe = (await response.json()) as Recipe
-
-  // Process new ingredients (those with id=-1) - mutates in place
-  if (recipe.extendedIngredients) {
-    processNewIngredients(recipe.extendedIngredients)
-  }
+  processRecipeIngredients(recipe)
 
   // Return modified response with updated ingredient IDs
   return new Response(JSON.stringify(recipe), {
@@ -35,10 +58,8 @@ async function transformRecipesResponse(response: Response): Promise<Response> {
   if (typeof body === 'object' && body != null && 'recipes' in body) {
     const recipes = body.recipes as Recipe[]
     for (const recipe of recipes) {
-      // Process new ingredients (those with id=-1) - mutates in place
-      if (recipe.extendedIngredients) {
-        processNewIngredients(recipe.extendedIngredients)
-      }
+      // Process ingredients: assign IDs to unknown, then dedupe
+      processRecipeIngredients(recipe)
 
       // Cache individual recipe for later retrieval
       if (typeof recipe.id === 'number') {

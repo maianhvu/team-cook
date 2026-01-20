@@ -27,8 +27,9 @@ struct CookRecipeDetailView: View {
     
     private func bulletImageName(for ingredientConsistency: IngredientConsistency) -> String {
         switch ingredientConsistency {
-        case .solid: "cube"
-        case .liquid: "drop"
+        case .solid: return "cube"
+        case .liquid: return "drop"
+        case .unsupported: return "questionmark"
         }
     }
     
