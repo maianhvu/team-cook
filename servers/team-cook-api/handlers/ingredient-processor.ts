@@ -1,5 +1,6 @@
 import { defineHandler } from '../handler/types'
-import { processNewIngredients, type Recipe } from '../services/ingredient-id'
+import type { Recipe } from '../models/Ingredient'
+import { processNewIngredients } from '../services/ingredient-id'
 import { setCache, CACHE_DURATION_MS_DEFAULT } from '../services/cache'
 
 /**

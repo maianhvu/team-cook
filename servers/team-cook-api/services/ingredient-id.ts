@@ -1,26 +1,5 @@
 import chalk from 'chalk'
-
-// Types for ingredient processing
-export interface Measure {
-  amount: number
-  unitShort: string
-  unitLong: string
-}
-
-export interface Ingredient {
-  id: number
-  name: string
-  originalName: string
-  measures?: {
-    us?: Measure
-    metric?: Measure
-  }
-}
-
-export interface Recipe {
-  id: number
-  extendedIngredients?: Ingredient[]
-}
+import type { Ingredient } from '../models/Ingredient'
 
 // Read CSV to find max ingredient ID (for assigning new IDs to unknown ingredients)
 const csvContent = await Bun.file('ingredients-with-possible-units.csv').text()
@@ -48,6 +27,24 @@ console.log(
 const assignedIngredientIds = new Map<string, number>()
 
 /**
+ * Get or assign a unique ID for an ingredient by name.
+ * If the ingredient has been seen before, returns the same ID.
+ * Otherwise, assigns a new unique ID.
+ */
+export function getOrAssignIngredientId(name: string, originalName: string = name): number {
+  const key = `${name.toLowerCase()}|${originalName.toLowerCase()}`
+
+  let assignedId = assignedIngredientIds.get(key)
+  if (assignedId === undefined) {
+    assignedId = nextIngredientId++
+    assignedIngredientIds.set(key, assignedId)
+    console.log(chalk.green('[INGREDIENT]'), `Assigned new ID ${assignedId} to "${name}"`)
+  }
+
+  return assignedId
+}
+
+/**
  * Process extendedIngredients to assign IDs to ingredients with id=-1
  * Deduplicates by name+originalName combination and assigns new IDs in memory
  * Mutates the ingredients array in place
@@ -55,20 +52,6 @@ const assignedIngredientIds = new Map<string, number>()
 export function processNewIngredients(extendedIngredients: Ingredient[]): void {
   for (const ing of extendedIngredients) {
     if (ing.id !== -1) continue
-
-    // Create dedupe key from name + originalName
-    const key = `${ing.name.toLowerCase()}|${ing.originalName.toLowerCase()}`
-
-    // Check if we've already assigned an ID for this ingredient
-    let assignedId = assignedIngredientIds.get(key)
-    if (assignedId === undefined) {
-      // Assign new ID
-      assignedId = nextIngredientId++
-      assignedIngredientIds.set(key, assignedId)
-      console.log(chalk.green('[INGREDIENT]'), `Assigned new ID ${assignedId} to "${ing.name}"`)
-    }
-
-    // Mutate the ingredient with the assigned ID
-    ing.id = assignedId
+    ing.id = getOrAssignIngredientId(ing.name, ing.originalName)
   }
 }
