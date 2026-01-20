@@ -4,48 +4,58 @@ struct CookRecipeListItemView: View {
     var recipe: Recipe
     var action: (() -> Void)?
     
-    var body: some View {
-        Button { action?() } label: {
-            HStack(alignment: .top) {
-                ZStack(alignment: .bottomLeading) {
-                    Rectangle()
-                        .fill(Color(.systemBackground))
-                        .frame(width: 80, height: 80)
-                        .overlay {
-                            AsyncImage(url: recipe.imageURL) { image in
-                                image.resizable().scaledToFill()
-                            } placeholder: {
-                                EmptyView()
-                            }
-                        }
-                        .clipShape(.rect(cornerRadius: 8))
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(recipe.title)
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("\(Image(systemName: "clock")) \(recipe.readyInMinutes) mins")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                    
-                    FlowLayout {
-                        if recipe.isVegetarian {
-                            RecipeAttributeView(title: "Vegetarian", systemIcon: "leaf.fill", color: .green)
-                        }
-                        if recipe.isGlutenFree {
-                            RecipeAttributeView(title: "Gluten-free", iconName: "laurel.trailing.slash", color: .orange)
-                        }
-                        if recipe.isVeryHealthy {
-                            RecipeAttributeView(title: "Healthy", systemIcon: "heart.badge.bolt.fill", color: .red)
+    private var content: some View {
+        HStack(alignment: .top) {
+            ZStack(alignment: .bottomLeading) {
+                Rectangle()
+                    .fill(Color(.systemBackground))
+                    .frame(width: 80, height: 80)
+                    .overlay {
+                        AsyncImage(url: recipe.imageURL) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            EmptyView()
                         }
                     }
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                    .clipShape(.rect(cornerRadius: 8))
             }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(recipe.title)
+                    .font(.system(size: 16, weight: .semibold))
+                Text("\(Image(systemName: "clock")) \(recipe.readyInMinutes) mins")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                
+                FlowLayout {
+                    if recipe.isVegetarian {
+                        RecipeAttributeView(title: "Vegetarian", systemIcon: "leaf.fill", color: .green)
+                    }
+                    if recipe.isGlutenFree {
+                        RecipeAttributeView(title: "Gluten-free", iconName: "laurel.trailing.slash", color: .orange)
+                    }
+                    if recipe.isVeryHealthy {
+                        RecipeAttributeView(title: "Healthy", systemIcon: "heart.badge.bolt.fill", color: .red)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .buttonStyle(.plain)
+    }
+    
+    var body: some View {
+        if let action {
+            Button {
+                action()
+            } label: {
+                content
+            }
+            .buttonStyle(.plain)
+        } else {
+            content
+        }
     }
 }
 

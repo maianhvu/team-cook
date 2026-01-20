@@ -42,12 +42,19 @@ struct CookRecipesSearchView: View {
             
             List {
                 ForEach(recipes.enumerated(), id: \.element.id) { offset, recipe in
-                    CookRecipeListItemView(recipe: recipe)
-                        .listRowSeparator(offset == 0 ? .hidden : .automatic, edges: .top)
-                        .listRowSeparator(offset == recipes.count - 1 ? .hidden : .automatic, edges: .bottom)
+                    NavigationLink(value: recipe.id) {
+                        CookRecipeListItemView(recipe: recipe)
+                    }
+                    .listRowSeparator(offset == 0 ? .hidden : .automatic, edges: .top)
+                    .listRowSeparator(offset == recipes.count - 1 ? .hidden : .automatic, edges: .bottom)
                 }
             }
             .listStyle(.inset)
+            .navigationDestination(for: RecipeID.self) { recipeID in
+                if let recipe = recipes.first(where: { $0.id == recipeID }) {
+                    CookRecipeDetailView(recipe: recipe)
+                }
+            }
         }
     }
     
