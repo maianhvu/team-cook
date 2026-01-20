@@ -29,7 +29,6 @@ struct CookRecipeDetailView: View {
         switch ingredientConsistency {
         case .solid: return "cube"
         case .liquid: return "drop"
-        case .unsupported: return "questionmark"
         }
     }
     
