@@ -52,7 +52,7 @@ final class QueryController<Request: NetworkRequest>: ObservableObject {
     @Published var isEnabled: Bool = true
 
     @Published private(set) var data: Request.ResponseBody?
-    @Published private(set) var error: (any Error)?
+    @Published var error: (any Error)?
     @Published private var activeFetchID: UUID? = nil
     
     var isFetching: Bool {

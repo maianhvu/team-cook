@@ -58,6 +58,41 @@ struct CookRecipesSearchView: View {
         }
     }
     
+    @ViewBuilder
+    private func failedToLoadSuggestionsView(for error: any Error) -> some View {
+        VStack(alignment: .center) {
+            Image(systemName: "eyes")
+                .font(.system(size: 60))
+                .foregroundStyle(.secondary)
+            Text("Failed to load recipes")
+                .font(.system(size: 20))
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+            
+            Text(error.localizedDescription)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            
+            #if DEBUG
+            Text((error as NSError).userInfo.description)
+                .font(.custom("Menlo", size: 12))
+                .foregroundStyle(.secondary)
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .clipShape(.rect(cornerRadius: 8))
+                .padding(.horizontal)
+            #endif
+            
+            Button("Reload") {
+                $suggestedRecipes.error = nil
+                $suggestedRecipes.refetch()
+            }
+            .buttonStyle(.bordered)
+            .tint(.secondary)
+        }
+        .frame(maxHeight: .infinity)
+    }
+    
     var body: some View {
         NavigationSplitView {
             VStack(alignment: .leading) {
@@ -77,8 +112,8 @@ struct CookRecipesSearchView: View {
                     suggestedRecipesList(for: suggestedRecipes)
                 } else if $suggestedRecipes.isFetching {
                     loadingSuggestionsView()
-                } else {
-                    Spacer()
+                } else if let error = $suggestedRecipes.error {
+                    failedToLoadSuggestionsView(for: error)
                 }
             }
             .frame(maxWidth: .infinity)
