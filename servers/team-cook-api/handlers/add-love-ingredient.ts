@@ -7,13 +7,10 @@ import { getOrAssignIngredientId } from '../services/ingredient-id'
  */
 function createLoveIngredient(): Ingredient {
   return {
-    id: getOrAssignIngredientId('love'),
-    name: 'love',
-    originalName: 'love',
-    measures: {
-      us: { amount: 1, unitShort: 'a lot', unitLong: 'a lot' },
-      metric: { amount: 1, unitShort: 'a lot', unitLong: 'a lot' },
-    },
+    id: getOrAssignIngredientId('a lot of love'),
+    name: 'a lot of love',
+    originalName: 'a lot of love',
+    measures: {},
     consistency: 'IMMATERIAL',
   }
 }
