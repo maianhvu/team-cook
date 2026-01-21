@@ -438,6 +438,217 @@ final class TeamCookMacrosTests: XCTestCase {
         #endif
     }
     
+    // MARK: - Custom Fallback Case Name Tests
+    
+    func testSafeEnumWithUnrecognizedFallbackCase() throws {
+        #if canImport(TeamCookMacrosImpl)
+        // The fallback case can be named anything, not just "unsupported"
+        assertMacroExpansion(
+            """
+            @SafeEnum
+            enum Status {
+                case active
+                case pending
+                case unrecognized(String)
+            }
+            """,
+            expandedSource: """
+            enum Status {
+                case active
+                case pending
+                case unrecognized(String)
+            }
+
+            extension Status: RawRepresentable, Codable {
+                typealias RawValue = String
+                init(rawValue: String) {
+                    switch rawValue {
+                    case "active":
+                        self = .active
+                    case "pending":
+                        self = .pending
+                    default:
+                        self = .unrecognized(rawValue)
+                    }
+                }
+                var rawValue: String {
+                    switch self {
+                    case .active:
+                        return "active"
+                    case .pending:
+                        return "pending"
+                    case .unrecognized(let value):
+                        return value
+                    }
+                }
+                init(from decoder: Decoder) throws {
+                    let container = try decoder.singleValueContainer()
+                    let rawValue = try container.decode(String.self)
+                    self.init(rawValue: rawValue)
+                }
+                func encode(to encoder: Encoder) throws {
+                    var container = encoder.singleValueContainer()
+                    try container.encode(self.rawValue)
+                }
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    func testSafeEnumWithMixedSpecifiedAndUnspecifiedRawValues() throws {
+        #if canImport(TeamCookMacrosImpl)
+        // Some cases have explicit raw values, others use the default (case name)
+        assertMacroExpansion(
+            """
+            @SafeEnum(rawValues: ["active": "ACTIVE_STATUS"])
+            enum Status {
+                case active
+                case pending
+                case unknown(String)
+            }
+            """,
+            expandedSource: """
+            enum Status {
+                case active
+                case pending
+                case unknown(String)
+            }
+
+            extension Status: RawRepresentable, Codable {
+                typealias RawValue = String
+                init(rawValue: String) {
+                    switch rawValue {
+                    case "ACTIVE_STATUS":
+                        self = .active
+                    case "pending":
+                        self = .pending
+                    default:
+                        self = .unknown(rawValue)
+                    }
+                }
+                var rawValue: String {
+                    switch self {
+                    case .active:
+                        return "ACTIVE_STATUS"
+                    case .pending:
+                        return "pending"
+                    case .unknown(let value):
+                        return value
+                    }
+                }
+                init(from decoder: Decoder) throws {
+                    let container = try decoder.singleValueContainer()
+                    let rawValue = try container.decode(String.self)
+                    self.init(rawValue: rawValue)
+                }
+                func encode(to encoder: Encoder) throws {
+                    var container = encoder.singleValueContainer()
+                    try container.encode(self.rawValue)
+                }
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    // MARK: - Error Cases Tests
+    
+    func testSafeEnumWithMultipleFallbackCasesEmitsError() throws {
+        #if canImport(TeamCookMacrosImpl)
+        let errorMessage = "@SafeEnum requires exactly one case with an associated value, but found multiple: unsupported, unknown. Keep only one fallback case."
+        assertMacroExpansion(
+            """
+            @SafeEnum
+            enum Status {
+                case active
+                case unsupported(String)
+                case unknown(String)
+            }
+            """,
+            expandedSource: """
+            enum Status {
+                case active
+                case unsupported(String)
+                case unknown(String)
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1),
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1)
+            ],
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    func testSafeEnumWithNoFallbackCaseEmitsError() throws {
+        #if canImport(TeamCookMacrosImpl)
+        let errorMessage = "@SafeEnum requires exactly one case with an associated String value (e.g., 'case unsupported(String)') to handle unrecognized raw values."
+        assertMacroExpansion(
+            """
+            @SafeEnum
+            enum Status {
+                case active
+                case pending
+            }
+            """,
+            expandedSource: """
+            enum Status {
+                case active
+                case pending
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1),
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1)
+            ],
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    func testSafeEnumWithDuplicateRawValuesEmitsError() throws {
+        #if canImport(TeamCookMacrosImpl)
+        // Using lowercase transform causes "Active" and "active" to both become "active"
+        let errorMessage = "@SafeEnum: Multiple cases resolve to the same raw value 'active': Active, active. Use explicit rawValues mapping to disambiguate."
+        assertMacroExpansion(
+            """
+            @SafeEnum(rawValueTransform: .lowercase)
+            enum Status {
+                case Active
+                case active
+                case unsupported(String)
+            }
+            """,
+            expandedSource: """
+            enum Status {
+                case Active
+                case active
+                case unsupported(String)
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1),
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1)
+            ],
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
     // MARK: - Invalid Usage Tests (raw type declared - should emit error)
     
     func testSafeEnumWithStringRawTypeEmitsError() throws {

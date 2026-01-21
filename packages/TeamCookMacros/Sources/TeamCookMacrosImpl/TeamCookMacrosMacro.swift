@@ -1,16 +1,26 @@
+import Foundation
 import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
-/// Error thrown when @SafeEnum is applied to an enum with a raw type declaration
+/// Errors thrown by @SafeEnum macro
 enum SafeEnumError: Error, CustomStringConvertible {
     case rawTypeNotAllowed(typeName: String)
+    case noFallbackCase
+    case multipleFallbackCases(caseNames: [String])
+    case duplicateRawValues(rawValue: String, caseNames: [String])
     
     var description: String {
         switch self {
         case .rawTypeNotAllowed(let typeName):
             return "@SafeEnum cannot be used with enums that declare a raw type (': \(typeName)'). Remove the raw type from the enum declaration. The macro will generate RawRepresentable conformance automatically."
+        case .noFallbackCase:
+            return "@SafeEnum requires exactly one case with an associated String value (e.g., 'case unsupported(String)') to handle unrecognized raw values."
+        case .multipleFallbackCases(let caseNames):
+            return "@SafeEnum requires exactly one case with an associated value, but found multiple: \(caseNames.joined(separator: ", ")). Keep only one fallback case."
+        case .duplicateRawValues(let rawValue, let caseNames):
+            return "@SafeEnum: Multiple cases resolve to the same raw value '\(rawValue)': \(caseNames.joined(separator: ", ")). Use explicit rawValues mapping to disambiguate."
         }
     }
 }
@@ -89,6 +99,62 @@ public struct SafeEnumMacro: MemberMacro, ExtensionMacro {
         let rawValue: String
     }
     
+    /// Represents a case with an associated value (the fallback case)
+    private struct FallbackCase {
+        let name: String
+    }
+    
+    /// Finds all cases with associated values in the enum
+    /// Returns the names of cases that have associated values
+    private static func findFallbackCases(in enumDecl: EnumDeclSyntax) -> [String] {
+        var fallbackCases: [String] = []
+        
+        for member in enumDecl.memberBlock.members {
+            guard let caseDecl = member.decl.as(EnumCaseDeclSyntax.self) else { continue }
+            
+            for element in caseDecl.elements {
+                // Check if this case has associated values
+                if element.parameterClause != nil {
+                    fallbackCases.append(element.name.text)
+                }
+            }
+        }
+        
+        return fallbackCases
+    }
+    
+    /// Validates the enum structure and returns the fallback case name
+    private static func validateAndGetFallbackCase(in enumDecl: EnumDeclSyntax) throws -> FallbackCase {
+        let fallbackCases = findFallbackCases(in: enumDecl)
+        
+        if fallbackCases.isEmpty {
+            throw SafeEnumError.noFallbackCase
+        }
+        
+        if fallbackCases.count > 1 {
+            throw SafeEnumError.multipleFallbackCases(caseNames: fallbackCases)
+        }
+        
+        return FallbackCase(name: fallbackCases[0])
+    }
+    
+    /// Validates that no two cases resolve to the same raw value
+    private static func validateNoDuplicateRawValues(cases: [EnumCase]) throws {
+        var rawValueToCases: [String: [String]] = [:]
+        
+        for enumCase in cases {
+            // Strip quotes from raw value for comparison
+            let rawValue = enumCase.rawValue.replacingOccurrences(of: "\"", with: "")
+            rawValueToCases[rawValue, default: []].append(enumCase.name)
+        }
+        
+        for (rawValue, caseNames) in rawValueToCases {
+            if caseNames.count > 1 {
+                throw SafeEnumError.duplicateRawValues(rawValue: rawValue, caseNames: caseNames)
+            }
+        }
+    }
+    
     /// Parses the rawValues dictionary from the macro attribute arguments
     /// e.g., @SafeEnum(rawValues: ["solid": "SOLID", "liquid": "LIQUID"])
     private static func parseRawValuesMapping(from node: AttributeSyntax) -> [String: String] {
@@ -156,11 +222,12 @@ public struct SafeEnumMacro: MemberMacro, ExtensionMacro {
     
     /// Extracts all cases from an enum declaration, including their raw values
     /// Priority: 1) explicit mapping, 2) transform (defaults to identity)
-    /// NOTE: The `unsupported` case is excluded - it's handled specially in the generated code
+    /// NOTE: The fallback case (with associated value) is excluded - it's handled specially
     private static func extractCases(
         from enumDecl: EnumDeclSyntax,
         explicitRawValues: [String: String],
-        transform: RawValueTransform
+        transform: RawValueTransform,
+        fallbackCaseName: String
     ) -> [EnumCase] {
         var cases: [EnumCase] = []
         
@@ -170,8 +237,8 @@ public struct SafeEnumMacro: MemberMacro, ExtensionMacro {
             for element in caseDecl.elements {
                 let name = element.name.text
                 
-                // Skip the unsupported case - it's handled specially
-                if name == "unsupported" {
+                // Skip the fallback case - it's handled specially
+                if name == fallbackCaseName {
                     continue
                 }
                 
@@ -207,6 +274,17 @@ public struct SafeEnumMacro: MemberMacro, ExtensionMacro {
             throw SafeEnumError.rawTypeNotAllowed(typeName: rawTypeName)
         }
         
+        // Validate the fallback case exists and is unique
+        _ = try validateAndGetFallbackCase(in: enumDecl)
+        
+        // Also validate for duplicate raw values early
+        let explicitRawValues = parseRawValuesMapping(from: node)
+        let transform = parseRawValueTransform(from: node)
+        let fallbackCases = findFallbackCases(in: enumDecl)
+        let fallbackCaseName = fallbackCases.first ?? ""
+        let cases = extractCases(from: enumDecl, explicitRawValues: explicitRawValues, transform: transform, fallbackCaseName: fallbackCaseName)
+        try validateNoDuplicateRawValues(cases: cases)
+        
         // MemberMacro no longer adds the unsupported case - user must declare it.
         // This avoids potential Swift compiler issues with macro-generated enum cases.
         return []
@@ -228,10 +306,16 @@ public struct SafeEnumMacro: MemberMacro, ExtensionMacro {
             throw SafeEnumError.rawTypeNotAllowed(typeName: rawTypeName)
         }
         
+        // Validate and get the fallback case (the case with associated value)
+        let fallbackCase = try validateAndGetFallbackCase(in: enumDecl)
+        
         let rawType: TypeSyntax = "String"
         let explicitRawValues = parseRawValuesMapping(from: node)
         let transform = parseRawValueTransform(from: node)
-        let cases = extractCases(from: enumDecl, explicitRawValues: explicitRawValues, transform: transform)
+        let cases = extractCases(from: enumDecl, explicitRawValues: explicitRawValues, transform: transform, fallbackCaseName: fallbackCase.name)
+        
+        // Validate no duplicate raw values
+        try validateNoDuplicateRawValues(cases: cases)
         
         // Generate switch cases for decoding (rawValue -> case)
         let decodeCases = cases.map { enumCase in
@@ -249,12 +333,12 @@ public struct SafeEnumMacro: MemberMacro, ExtensionMacro {
             // typealias RawValue = String
             "typealias RawValue = \(rawType)"
             
-            // init(rawValue:) - non-failable, unknown values become .unsupported(rawValue)
+            // init(rawValue:) - non-failable, unknown values go to the fallback case
             try InitializerDeclSyntax("init(rawValue: \(rawType))") {
                 """
                 switch rawValue {
                 \(raw: decodeCases)
-                default: self = .unsupported(rawValue)
+                default: self = .\(raw: fallbackCase.name)(rawValue)
                 }
                 """
             }
@@ -264,7 +348,7 @@ public struct SafeEnumMacro: MemberMacro, ExtensionMacro {
                 """
                 switch self {
                 \(raw: encodeCases)
-                case .unsupported(let value): return value
+                case .\(raw: fallbackCase.name)(let value): return value
                 }
                 """
             }
