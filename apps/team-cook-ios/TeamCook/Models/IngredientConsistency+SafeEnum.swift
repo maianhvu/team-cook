@@ -1,8 +1,9 @@
 import Foundation
 import TeamCookMacros
 
-//@UnsafeEnum
-//enum IngredientConsistency: String {
-//    case solid = "SOLID"
-//    case liquid = "LIQUID"
+//@SafeEnum(rawValueTransform: .uppercase)
+//enum IngredientConsistency {
+//    case solid
+//    case liquid
+//    case unsupported(String)
 //}
