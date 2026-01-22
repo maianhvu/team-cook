@@ -8,6 +8,9 @@ struct ContentView: View {
     var body: some View {
         TabView {
             Tab("Feed", systemImage: "newspaper") {
+                NavigationView {
+                    FeedView()
+                }
             }
             Tab("Cook", systemImage: "frying.pan") {
                 CookRecipesSearchView()
