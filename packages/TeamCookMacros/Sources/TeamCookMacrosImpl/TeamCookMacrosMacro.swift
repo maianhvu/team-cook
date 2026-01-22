@@ -371,6 +371,94 @@ public struct SafeEnumMacro: MemberMacro, ExtensionMacro {
     }
 }
 
+// MARK: - BrandedIDMacro
+
+/// Errors thrown by @BrandedID macro
+enum BrandedIDError: Error, CustomStringConvertible {
+    case notAStruct
+    case structHasMembers
+    
+    var description: String {
+        switch self {
+        case .notAStruct:
+            return "@BrandedID can only be applied to structs."
+        case .structHasMembers:
+            return "@BrandedID can only be applied to empty structs. Remove all existing members."
+        }
+    }
+}
+
+public struct BrandedIDMacro: MemberMacro, ExtensionMacro {
+    
+    public static func expansion(
+        of node: AttributeSyntax,
+        providingMembersOf declaration: some DeclGroupSyntax,
+        conformingTo protocols: [TypeSyntax],
+        in context: some MacroExpansionContext
+    ) throws -> [DeclSyntax] {
+        guard let structDecl = declaration.as(StructDeclSyntax.self) else {
+            throw BrandedIDError.notAStruct
+        }
+        
+        // Check that the struct is empty (no members)
+        let members = structDecl.memberBlock.members.filter { member in
+            // Filter out any existing members that aren't just whitespace/comments
+            member.decl.as(VariableDeclSyntax.self) != nil ||
+            member.decl.as(FunctionDeclSyntax.self) != nil ||
+            member.decl.as(InitializerDeclSyntax.self) != nil
+        }
+        
+        if !members.isEmpty {
+            throw BrandedIDError.structHasMembers
+        }
+        
+        return [
+            "var rawValue: UInt32",
+            """
+            init(rawValue: UInt32) {
+                self.rawValue = rawValue
+            }
+            """,
+            """
+            init(integerLiteral value: UInt32) {
+                self.init(rawValue: value)
+            }
+            """
+        ]
+    }
+    
+    public static func expansion(
+        of node: AttributeSyntax,
+        attachedTo declaration: some DeclGroupSyntax,
+        providingExtensionsOf type: some TypeSyntaxProtocol,
+        conformingTo protocols: [TypeSyntax],
+        in context: some MacroExpansionContext
+    ) throws -> [ExtensionDeclSyntax] {
+        guard let structDecl = declaration.as(StructDeclSyntax.self) else {
+            throw BrandedIDError.notAStruct
+        }
+        
+        // Check that the struct is empty (no members)
+        let members = structDecl.memberBlock.members.filter { member in
+            member.decl.as(VariableDeclSyntax.self) != nil ||
+            member.decl.as(FunctionDeclSyntax.self) != nil ||
+            member.decl.as(InitializerDeclSyntax.self) != nil
+        }
+        
+        if !members.isEmpty {
+            throw BrandedIDError.structHasMembers
+        }
+        
+        let extensionDecl = try ExtensionDeclSyntax(
+            "extension \(type): RawRepresentable, Hashable, Codable, Sendable, ExpressibleByIntegerLiteral"
+        ) {
+            "typealias RawValue = UInt32"
+        }
+        
+        return [extensionDecl]
+    }
+}
+
 // MARK: - UnsafeEnumMacro (DEPRECATED - Causes EXC_BAD_ACCESS)
 
 /// ⚠️ DEPRECATED: This macro demonstrates a pattern that causes runtime crashes.
@@ -479,5 +567,6 @@ struct TeamCookMacrosPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         SafeEnumMacro.self,
         UnsafeEnumMacro.self,
+        BrandedIDMacro.self,
     ]
 }

@@ -9,6 +9,7 @@ import TeamCookMacrosImpl
 
 let testMacros: [String: Macro.Type] = [
     "SafeEnum": SafeEnumMacro.self,
+    "BrandedID": BrandedIDMacro.self,
 ]
 #endif
 
@@ -725,6 +726,142 @@ final class TeamCookMacrosTests: XCTestCase {
                 var value: String
             }
             """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    // MARK: - BrandedID Tests
+    
+    func testBrandedIDBasicExpansion() throws {
+        #if canImport(TeamCookMacrosImpl)
+        assertMacroExpansion(
+            """
+            @BrandedID
+            struct RecipeID {}
+            """,
+            expandedSource: """
+            struct RecipeID {
+
+                var rawValue: UInt32
+
+                init(rawValue: UInt32) {
+                    self.rawValue = rawValue
+                }
+
+                init(integerLiteral value: UInt32) {
+                    self.init(rawValue: value)
+                }
+            }
+
+            extension RecipeID: RawRepresentable, Hashable, Codable, Sendable, ExpressibleByIntegerLiteral {
+                typealias RawValue = UInt32
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    func testBrandedIDWithDifferentName() throws {
+        #if canImport(TeamCookMacrosImpl)
+        assertMacroExpansion(
+            """
+            @BrandedID
+            struct IngredientID {}
+            """,
+            expandedSource: """
+            struct IngredientID {
+
+                var rawValue: UInt32
+
+                init(rawValue: UInt32) {
+                    self.rawValue = rawValue
+                }
+
+                init(integerLiteral value: UInt32) {
+                    self.init(rawValue: value)
+                }
+            }
+
+            extension IngredientID: RawRepresentable, Hashable, Codable, Sendable, ExpressibleByIntegerLiteral {
+                typealias RawValue = UInt32
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    func testBrandedIDOnNonStructEmitsError() throws {
+        #if canImport(TeamCookMacrosImpl)
+        let errorMessage = "@BrandedID can only be applied to structs."
+        assertMacroExpansion(
+            """
+            @BrandedID
+            enum RecipeID {}
+            """,
+            expandedSource: """
+            enum RecipeID {}
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1),
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1)
+            ],
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    func testBrandedIDOnClassEmitsError() throws {
+        #if canImport(TeamCookMacrosImpl)
+        let errorMessage = "@BrandedID can only be applied to structs."
+        assertMacroExpansion(
+            """
+            @BrandedID
+            class RecipeID {}
+            """,
+            expandedSource: """
+            class RecipeID {}
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1),
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1)
+            ],
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    func testBrandedIDOnNonEmptyStructEmitsError() throws {
+        #if canImport(TeamCookMacrosImpl)
+        let errorMessage = "@BrandedID can only be applied to empty structs. Remove all existing members."
+        assertMacroExpansion(
+            """
+            @BrandedID
+            struct RecipeID {
+                var id: Int
+            }
+            """,
+            expandedSource: """
+            struct RecipeID {
+                var id: Int
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1),
+                DiagnosticSpec(message: errorMessage, line: 1, column: 1)
+            ],
             macros: testMacros
         )
         #else

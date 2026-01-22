@@ -49,3 +49,21 @@ public macro SafeEnum(rawValueTransform: RawValueTransform) = #externalMacro(mod
 @attached(member, names: named(unsupported))
 @attached(extension, conformances: RawRepresentable, Codable, names: named(RawValue), named(init), named(rawValue), named(encode))
 public macro UnsafeEnum() = #externalMacro(module: "TeamCookMacrosImpl", type: "UnsafeEnumMacro")
+
+// MARK: - BrandedID
+
+/// Creates a branded ID type with RawRepresentable, Hashable, Codable, Sendable, and ExpressibleByIntegerLiteral conformances.
+///
+/// Usage:
+///   @BrandedID
+///   struct RecipeID {}
+///
+/// Expands to:
+///   struct RecipeID: RawRepresentable, Hashable, Codable, Sendable, ExpressibleByIntegerLiteral {
+///       var rawValue: UInt32
+///       init(rawValue: UInt32) { self.rawValue = rawValue }
+///       init(integerLiteral value: UInt32) { self.init(rawValue: value) }
+///   }
+@attached(member, names: named(rawValue), named(init))
+@attached(extension, conformances: RawRepresentable, Hashable, Codable, Sendable, ExpressibleByIntegerLiteral, names: named(RawValue))
+public macro BrandedID() = #externalMacro(module: "TeamCookMacrosImpl", type: "BrandedIDMacro")
